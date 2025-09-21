@@ -8,6 +8,8 @@ import Assessment from "./pages/Assessment";
 import Chat from "./pages/Chat";
 import Booking from "./pages/Booking";
 import Resources from "./pages/Resources";
+import Forums from "./pages/Forums";
+import Analytics from "./pages/Analytics";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
@@ -25,6 +27,8 @@ const App = () => (
           <Route path="/chat" element={<Chat />} />
           <Route path="/booking" element={<Booking />} />
           <Route path="/resources" element={<Resources />} />
+          <Route path="/forums" element={<Forums />} />
+          <Route path="/analytics" element={<Analytics />} />
           <Route path="/admin" element={<Admin />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

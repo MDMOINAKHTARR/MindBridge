@@ -85,8 +85,14 @@ const Landing = () => {
               </Button>
               
               <Button asChild variant="outline" size="lg">
-                <Link to="/login">
-                  {t.signInButton}
+                <Link to="/resources">
+                  Explore Resources
+                </Link>
+              </Button>
+
+              <Button asChild variant="secondary" size="lg">
+                <Link to="/forums">
+                  Join Community
                 </Link>
               </Button>
             </div>

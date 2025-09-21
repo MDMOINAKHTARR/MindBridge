@@ -1,88 +1,127 @@
-import { useState } from "react";
-import { ArrowLeft, Play, FileText, Volume2, Globe, Clock, Heart } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, Play, FileText, Volume2, Globe, Clock, Heart, Download, Eye } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface ResourceCategory {
+  id: string;
+  name_en: string;
+  name_hi: string;
+  slug: string;
+}
 
 interface Resource {
   id: string;
-  title: string;
-  description: string;
-  type: 'video' | 'pdf' | 'audio';
-  duration: string;
-  category: 'relaxation' | 'study' | 'sleep';
-  language: 'en' | 'hi';
-  thumbnail?: string;
+  title_en: string;
+  title_hi: string;
+  description_en: string;
+  description_hi: string;
+  content_en?: string;
+  content_hi?: string;
+  type: 'video' | 'pdf' | 'audio' | 'article';
+  category_id: string;
+  duration_minutes?: number;
+  file_url?: string;
+  thumbnail_url?: string;
+  is_featured: boolean;
+  view_count: number;
 }
-
-const resources: Resource[] = [
-  {
-    id: '1',
-    title: '5-Minute Mindfulness Meditation',
-    description: 'A gentle guided meditation to help you find calm and center yourself.',
-    type: 'video',
-    duration: '5 min',
-    category: 'relaxation',
-    language: 'en'
-  },
-  {
-    id: '2',
-    title: 'Progressive Muscle Relaxation',
-    description: 'Learn to release physical tension and stress from your body.',
-    type: 'audio',
-    duration: '12 min',
-    category: 'relaxation',
-    language: 'en'
-  },
-  {
-    id: '3',
-    title: 'Effective Study Techniques Guide',
-    description: 'Evidence-based strategies to improve your learning and retention.',
-    type: 'pdf',
-    duration: '8 min read',
-    category: 'study',
-    language: 'en'
-  },
-  {
-    id: '4',
-    title: 'मानसिक शांति के लिए ध्यान',
-    description: 'मन की शांति और एकाग्रता के लिए सरल ध्यान तकनीक।',
-    type: 'video',
-    duration: '7 min',
-    category: 'relaxation',
-    language: 'hi'
-  },
-  {
-    id: '5',
-    title: 'Sleep Hygiene for Students',
-    description: 'Tips and techniques for better sleep quality and consistent sleep schedule.',
-    type: 'video',
-    duration: '6 min',
-    category: 'sleep',
-    language: 'en'
-  },
-  {
-    id: '6',
-    title: 'Breathing Exercises for Anxiety',
-    description: 'Simple breathing techniques you can use anywhere to manage anxiety.',
-    type: 'audio',
-    duration: '10 min',
-    category: 'relaxation',
-    language: 'en'
-  }
-];
 
 const Resources = () => {
   const [selectedLanguage, setSelectedLanguage] = useState<'en' | 'hi'>('en');
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'relaxation' | 'study' | 'sleep'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [categories, setCategories] = useState<ResourceCategory[]>([]);
+  const [resources, setResources] = useState<Resource[]>([]);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchCategories();
+    fetchResources();
+  }, []);
+
+  const fetchCategories = async () => {
+    const { data, error } = await supabase
+      .from('resource_categories')
+      .select('*')
+      .order('name_en');
+
+    if (error) {
+      toast({
+        title: "Error loading categories",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      setCategories(data || []);
+    }
+  };
+
+  const fetchResources = async () => {
+    const { data, error } = await supabase
+      .from('resources')
+      .select('*')
+      .order('is_featured', { ascending: false })
+      .order('view_count', { ascending: false });
+
+    if (error) {
+      toast({
+        title: "Error loading resources",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      setResources(data?.map(item => ({
+        ...item,
+        type: item.type as 'video' | 'pdf' | 'audio' | 'article'
+      })) || []);
+    }
+  };
+
+  const updateViewCount = async (resourceId: string) => {
+    // First get current view count
+    const { data: currentResource } = await supabase
+      .from('resources')
+      .select('view_count')
+      .eq('id', resourceId)
+      .single();
+
+    if (currentResource) {
+      const { error } = await supabase
+        .from('resources')
+        .update({ view_count: currentResource.view_count + 1 })
+        .eq('id', resourceId);
+
+      if (!error) {
+        setResources(prev => prev.map(r => 
+          r.id === resourceId ? { ...r, view_count: r.view_count + 1 } : r
+        ));
+      }
+    }
+  };
 
   const filteredResources = resources.filter(resource => {
-    const languageMatch = resource.language === selectedLanguage;
-    const categoryMatch = selectedCategory === 'all' || resource.category === selectedCategory;
-    return languageMatch && categoryMatch;
+    const categoryMatch = selectedCategory === 'all' || resource.category_id === selectedCategory;
+    return categoryMatch;
   });
+
+  const getTitle = (resource: Resource) => {
+    return selectedLanguage === 'hi' ? resource.title_hi : resource.title_en;
+  };
+
+  const getDescription = (resource: Resource) => {
+    return selectedLanguage === 'hi' ? resource.description_hi : resource.description_en;
+  };
+
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(c => c.id === categoryId);
+    if (!category) return '';
+    return selectedLanguage === 'hi' ? category.name_hi : category.name_en;
+  };
 
   const getResourceIcon = (type: string) => {
     switch (type) {
@@ -93,11 +132,12 @@ const Resources = () => {
     }
   };
 
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'relaxation': return 'bg-wellness-safe/10 text-wellness-safe';
-      case 'study': return 'bg-primary/10 text-primary';
-      case 'sleep': return 'bg-secondary/10 text-secondary';
+  const getCategoryColor = (type: string) => {
+    switch (type) {
+      case 'video': return 'bg-primary/10 text-primary';
+      case 'audio': return 'bg-wellness-safe/10 text-wellness-safe';
+      case 'pdf': return 'bg-secondary/10 text-secondary';
+      case 'article': return 'bg-wellness-warning/10 text-wellness-warning';
       default: return 'bg-muted text-muted-foreground';
     }
   };
@@ -134,12 +174,14 @@ const Resources = () => {
             </select>
           </div>
 
-          <Tabs value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as any)}>
+          <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
             <TabsList className="bg-white border border-border">
               <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="relaxation">Relaxation</TabsTrigger>
-              <TabsTrigger value="study">Study Stress</TabsTrigger>
-              <TabsTrigger value="sleep">Sleep</TabsTrigger>
+              {categories.map((category) => (
+                <TabsTrigger key={category.id} value={category.id}>
+                  {selectedLanguage === 'hi' ? category.name_hi : category.name_en}
+                </TabsTrigger>
+              ))}
             </TabsList>
           </Tabs>
         </div>
@@ -147,36 +189,57 @@ const Resources = () => {
         {/* Resources Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {filteredResources.map((resource) => (
-            <Card key={resource.id} className="p-6 shadow-soft border-0 hover:shadow-card transition-all duration-300 group cursor-pointer">
+            <Card key={resource.id} className="p-6 shadow-soft border-0 hover:shadow-card transition-all duration-300 group cursor-pointer"
+                  onClick={() => updateViewCount(resource.id)}>
               <div className="flex items-start justify-between mb-4">
-                <div className={`p-3 rounded-lg ${getCategoryColor(resource.category)}`}>
+                <div className={`p-3 rounded-lg ${getCategoryColor(resource.type)}`}>
                   {getResourceIcon(resource.type)}
                 </div>
                 <div className="flex items-center gap-2">
+                  {resource.is_featured && (
+                    <Badge className="bg-wellness-warning/10 text-wellness-warning border-wellness-warning/20">
+                      Featured
+                    </Badge>
+                  )}
                   <Badge variant="outline" className="text-xs">
                     {resource.type.toUpperCase()}
                   </Badge>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock className="w-3 h-3" />
-                    {resource.duration}
-                  </div>
+                  {resource.duration_minutes && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="w-3 h-3" />
+                      {resource.duration_minutes}m
+                    </div>
+                  )}
                 </div>
               </div>
 
               <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">
-                {resource.title}
+                {getTitle(resource)}
               </h3>
               
               <p className="text-muted-foreground text-sm leading-relaxed mb-4">
-                {resource.description}
+                {getDescription(resource)}
               </p>
 
               <div className="flex items-center justify-between">
-                <Badge className={getCategoryColor(resource.category)} variant="outline">
-                  {resource.category}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge className={getCategoryColor(resource.type)} variant="outline">
+                    {getCategoryName(resource.category_id)}
+                  </Badge>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Eye className="w-3 h-3" />
+                    {resource.view_count}
+                  </div>
+                </div>
                 <Button size="sm" variant="ghost" className="group-hover:text-primary">
-                  Access Resource
+                  {resource.file_url ? (
+                    <div className="flex items-center gap-1">
+                      <Download className="w-3 h-3" />
+                      Access
+                    </div>
+                  ) : (
+                    'View Content'
+                  )}
                 </Button>
               </div>
             </Card>

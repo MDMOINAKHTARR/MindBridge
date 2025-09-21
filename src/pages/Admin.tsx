@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { Users, FileText, Calendar, TrendingUp, Shield, Activity } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -318,6 +319,36 @@ const Admin = () => {
             </table>
           </div>
         </Card>
+
+        {/* Quick Actions */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <Button variant="outline" className="w-full justify-start text-left h-auto p-6" asChild>
+            <Link to="/analytics">
+              <div>
+                <h3 className="font-semibold mb-1">Analytics Dashboard</h3>
+                <p className="text-sm text-muted-foreground">View detailed usage statistics and trends</p>
+              </div>
+            </Link>
+          </Button>
+
+          <Button variant="outline" className="w-full justify-start text-left h-auto p-6" asChild>
+            <Link to="/forums">
+              <div>
+                <h3 className="font-semibold mb-1">Forum Moderation</h3>
+                <p className="text-sm text-muted-foreground">Manage peer support discussions</p>
+              </div>
+            </Link>
+          </Button>
+
+          <Button variant="outline" className="w-full justify-start text-left h-auto p-6" asChild>
+            <Link to="/resources">
+              <div>
+                <h3 className="font-semibold mb-1">Resource Management</h3>
+                <p className="text-sm text-muted-foreground">Update localized wellness content</p>
+              </div>
+            </Link>
+          </Button>
+        </div>
 
         {/* Privacy Notice */}
         <Card className="mt-8 p-4 shadow-soft border-0 bg-muted/30">

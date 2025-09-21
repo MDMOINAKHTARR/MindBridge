@@ -14,7 +14,321 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      assessment_results: {
+        Row: {
+          assessment_type: string
+          completed_at: string
+          id: string
+          responses: Json | null
+          risk_level: string
+          score: number
+          user_id: string | null
+        }
+        Insert: {
+          assessment_type: string
+          completed_at?: string
+          id?: string
+          responses?: Json | null
+          risk_level: string
+          score: number
+          user_id?: string | null
+        }
+        Update: {
+          assessment_type?: string
+          completed_at?: string
+          id?: string
+          responses?: Json | null
+          risk_level?: string
+          score?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      chat_interactions: {
+        Row: {
+          created_at: string
+          crisis_keywords_detected: boolean | null
+          id: string
+          message_count: number | null
+          satisfaction_rating: number | null
+          session_duration_minutes: number | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          crisis_keywords_detected?: boolean | null
+          id?: string
+          message_count?: number | null
+          satisfaction_rating?: number | null
+          session_duration_minutes?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          crisis_keywords_detected?: boolean | null
+          id?: string
+          message_count?: number | null
+          satisfaction_rating?: number | null
+          session_duration_minutes?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      forum_categories: {
+        Row: {
+          created_at: string
+          description_en: string | null
+          description_hi: string | null
+          id: string
+          is_active: boolean | null
+          name_en: string
+          name_hi: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          description_en?: string | null
+          description_hi?: string | null
+          id?: string
+          is_active?: boolean | null
+          name_en: string
+          name_hi: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          description_en?: string | null
+          description_hi?: string | null
+          id?: string
+          is_active?: boolean | null
+          name_en?: string
+          name_hi?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      forum_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_anonymous: boolean | null
+          is_moderated: boolean | null
+          post_id: string
+          updated_at: string
+          upvotes: number | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_anonymous?: boolean | null
+          is_moderated?: boolean | null
+          post_id: string
+          updated_at?: string
+          upvotes?: number | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_anonymous?: boolean | null
+          is_moderated?: boolean | null
+          post_id?: string
+          updated_at?: string
+          upvotes?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "forum_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forum_posts: {
+        Row: {
+          category_id: string | null
+          content: string
+          created_at: string
+          id: string
+          is_anonymous: boolean | null
+          is_locked: boolean | null
+          is_moderated: boolean | null
+          is_pinned: boolean | null
+          moderation_notes: string | null
+          title: string
+          updated_at: string
+          upvotes: number | null
+          user_id: string
+          view_count: number | null
+        }
+        Insert: {
+          category_id?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          is_anonymous?: boolean | null
+          is_locked?: boolean | null
+          is_moderated?: boolean | null
+          is_pinned?: boolean | null
+          moderation_notes?: string | null
+          title: string
+          updated_at?: string
+          upvotes?: number | null
+          user_id: string
+          view_count?: number | null
+        }
+        Update: {
+          category_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_anonymous?: boolean | null
+          is_locked?: boolean | null
+          is_moderated?: boolean | null
+          is_pinned?: boolean | null
+          moderation_notes?: string | null
+          title?: string
+          updated_at?: string
+          upvotes?: number | null
+          user_id?: string
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_posts_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "forum_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resource_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name_en: string
+          name_hi: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name_en: string
+          name_hi: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name_en?: string
+          name_hi?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      resources: {
+        Row: {
+          category_id: string | null
+          content_en: string | null
+          content_hi: string | null
+          created_at: string
+          description_en: string | null
+          description_hi: string | null
+          duration_minutes: number | null
+          file_url: string | null
+          id: string
+          is_featured: boolean | null
+          thumbnail_url: string | null
+          title_en: string
+          title_hi: string
+          type: string
+          updated_at: string
+          view_count: number | null
+        }
+        Insert: {
+          category_id?: string | null
+          content_en?: string | null
+          content_hi?: string | null
+          created_at?: string
+          description_en?: string | null
+          description_hi?: string | null
+          duration_minutes?: number | null
+          file_url?: string | null
+          id?: string
+          is_featured?: boolean | null
+          thumbnail_url?: string | null
+          title_en: string
+          title_hi: string
+          type: string
+          updated_at?: string
+          view_count?: number | null
+        }
+        Update: {
+          category_id?: string | null
+          content_en?: string | null
+          content_hi?: string | null
+          created_at?: string
+          description_en?: string | null
+          description_hi?: string | null
+          duration_minutes?: number | null
+          file_url?: string | null
+          id?: string
+          is_featured?: boolean | null
+          thumbnail_url?: string | null
+          title_en?: string
+          title_hi?: string
+          type?: string
+          updated_at?: string
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resources_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "resource_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_sessions: {
+        Row: {
+          created_at: string
+          features_used: string[] | null
+          id: string
+          page_views: number | null
+          session_end: string | null
+          session_start: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          features_used?: string[] | null
+          id?: string
+          page_views?: number | null
+          session_end?: string | null
+          session_start?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          features_used?: string[] | null
+          id?: string
+          page_views?: number | null
+          session_end?: string | null
+          session_start?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
