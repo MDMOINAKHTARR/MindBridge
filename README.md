@@ -1,4 +1,4 @@
-Mind Bridge – Gamified Mental Wellness
+<h1>Mind Bridge – Gamified Mental Wellness</h1>
 
 Bridge Your Mind to Fun Wellness!
 
