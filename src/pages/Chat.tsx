@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, Send, Phone, AlertCircle, Heart, Smile } from "lucide-react";
+import { ArrowLeft, Send, Phone, AlertCircle, Heart, Smile, Headphones, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,6 +12,8 @@ interface Message {
   sender: 'user' | 'bot';
   timestamp: Date;
   suggestions?: string[];
+  mediaUrl?: string;
+  mediaType?: 'gif' | 'audio' | 'video';
 }
 
 const crisisKeywords = ['suicide', 'kill myself', 'end it all', 'hopeless', 'worthless', 'die'];
@@ -38,23 +40,34 @@ const botResponses = {
     suggestions: ["Can't fall asleep", "Wake up frequently", "Sleep schedule is off", "Racing thoughts"]
   },
   breathing: {
-    text: "Great choice! Let's do the 4-7-8 breathing technique: Breathe in for 4 counts, hold for 7 counts, breathe out for 8 counts. Ready? Breathe in... 1, 2, 3, 4... Hold... 1, 2, 3, 4, 5, 6, 7... And out... 1, 2, 3, 4, 5, 6, 7, 8. How did that feel?",
-    suggestions: ["That helped!", "Can we do it again?", "What other techniques help?", "I feel calmer"]
+    text: "Great choice! Let's try a 1-minute guided breathing. Press Play and follow the calm rhythm: in (4), hold (7), out (8).",
+    suggestions: ["That helped!", "Can we do it again?", "What other techniques help?", "I feel calmer"],
   }
 };
 
 const Chat = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
+  const [messages, setMessages] = useState<Message[]>(() => {
+    // Personalize first suggestions using last assessment
+    const lastAssessment = (() => {
+      try { return JSON.parse(localStorage.getItem('assessmentResults') || 'null'); } catch { return null; }
+    })();
+    const personalized = { ...botResponses.greeting } as { text: string; suggestions: string[] };
+    if (lastAssessment?.type === 'phq9') {
+      personalized.suggestions = ["I can't sleep well", "I'm feeling low", "I'm stressed about studies", "I'm feeling anxious"];
+    } else if (lastAssessment?.type === 'gad7') {
+      personalized.suggestions = ["I'm feeling anxious", "Trouble relaxing", "I'm stressed about studies", "I can't sleep well"];
+    }
+    return [{
       id: '1',
-      text: botResponses.greeting.text,
+      text: personalized.text,
       sender: 'bot',
       timestamp: new Date(),
-      suggestions: botResponses.greeting.suggestions
-    }
-  ]);
+      suggestions: personalized.suggestions
+    }];
+  });
   const [input, setInput] = useState('');
   const [showCrisisAlert, setShowCrisisAlert] = useState(false);
+  const [isBreathingPlaying, setIsBreathingPlaying] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -122,6 +135,19 @@ const Chat = () => {
         suggestions: botResponse.suggestions
       };
       setMessages(prev => [...prev, botMessage]);
+
+      // If breathing, append multimedia message (calming GIF + Play guide button)
+      if (botResponse === botResponses.breathing) {
+        const mediaMessage: Message = {
+          id: (Date.now() + 2).toString(),
+          text: 'Follow along with this calming visual. You can also press Play for a 1-minute audio guide.',
+          sender: 'bot',
+          timestamp: new Date(),
+          mediaUrl: 'https://media.giphy.com/media/l0Exk8EUzSLsrErEQ/giphy.gif',
+          mediaType: 'gif'
+        };
+        setMessages(prev => [...prev, mediaMessage]);
+      }
     }, 1000);
 
     setInput('');
@@ -129,6 +155,42 @@ const Chat = () => {
 
   const handleSuggestionClick = (suggestion: string) => {
     setInput(suggestion);
+  };
+
+  const startBreathingGuide = async () => {
+    try {
+      setIsBreathingPlaying(true);
+      const utterances = [
+        'Breathe in... two, three, four.',
+        'Hold... two, three, four, five, six, seven.',
+        'Breathe out... two, three, four, five, six, seven, eight.'
+      ];
+      const speak = (text: string) => new Promise<void>((resolve) => {
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = 0.9;
+        u.onend = () => resolve();
+        window.speechSynthesis.speak(u);
+      });
+      const start = Date.now();
+      while (Date.now() - start < 60000) {
+        for (const line of utterances) {
+          // stop if user navigates
+          if (!isBreathingPlaying) break;
+          // eslint-disable-next-line no-await-in-loop
+          await speak(line);
+        }
+        if (!isBreathingPlaying) break;
+      }
+    } catch (e) {
+      // noop
+    } finally {
+      setIsBreathingPlaying(false);
+    }
+  };
+
+  const stopBreathingGuide = () => {
+    setIsBreathingPlaying(false);
+    try { window.speechSynthesis.cancel(); } catch {}
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -168,6 +230,11 @@ const Chat = () => {
                     Call Helpline: 1-800-273-8255
                   </Button>
                   <Button size="sm" variant="outline" asChild>
+                    <a href="tel:18002738255">
+                      <Phone className="w-4 h-4 mr-2" /> Quick Call (Demo)
+                    </a>
+                  </Button>
+                  <Button size="sm" variant="outline" asChild>
                     <Link to="/booking">Book Emergency Session</Link>
                   </Button>
                 </div>
@@ -198,6 +265,9 @@ const Chat = () => {
                     : 'bg-white shadow-soft border-0'
                 }`}>
                   <p className="text-sm leading-relaxed">{message.text}</p>
+                  {message.mediaType === 'gif' && message.mediaUrl && (
+                    <img src={message.mediaUrl} alt="calming visual" className="mt-3 rounded-md" />
+                  )}
                 </Card>
 
                 {message.suggestions && (
@@ -236,6 +306,20 @@ const Chat = () => {
             <Button onClick={handleSendMessage} size="icon" className="rounded-xl">
               <Send className="w-4 h-4" />
             </Button>
+          </div>
+          <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Headphones className="w-3 h-3" />
+              <button
+                className="underline hover:text-foreground"
+                onClick={isBreathingPlaying ? stopBreathingGuide : startBreathingGuide}
+              >
+                {isBreathingPlaying ? 'Stop 1-min Breathing Guide' : 'Play 1-min Breathing Guide'}
+              </button>
+              <a href="https://www.nhs.uk/live-well/exercise/breathing-exercises-for-stress/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline">
+                Learn more <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
           </div>
           <p className="text-xs text-muted-foreground mt-2 text-center">
             This is an AI assistant providing general support. For urgent help, please contact emergency services.

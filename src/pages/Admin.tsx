@@ -24,6 +24,7 @@ const Admin = () => {
     totalBookings: 0,
     recentActivity: []
   });
+  const [filters, setFilters] = useState<{ department: string; dateRange: string }>({ department: 'all', dateRange: '7d' });
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -83,6 +84,23 @@ const Admin = () => {
       totalBookings: bookings.length + 3, // Add mock bookings
       recentActivity
     });
+  };
+
+  const exportCsv = () => {
+    const rows = [
+      ['Metric', 'Value'],
+      ['Total Assessments', String(dashboardData.totalAssessments)],
+      ['Bookings', String(dashboardData.totalBookings)],
+      ...dashboardData.riskDistribution.map(r => [r.name, String(r.value)])
+    ];
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'dashboard.csv';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleLogin = (e: React.FormEvent) => {
@@ -152,13 +170,55 @@ const Admin = () => {
             <h1 className="text-3xl font-bold">Mental Health Dashboard</h1>
             <p className="text-muted-foreground">Anonymous student wellness analytics</p>
           </div>
-          <Button 
-            variant="outline" 
-            onClick={() => setIsLoggedIn(false)}
-          >
-            Logout
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={exportCsv}>Download CSV</Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsLoggedIn(false)}
+            >
+              Logout
+            </Button>
+          </div>
         </div>
+
+        {/* Filters (mock) */}
+        <Card className="p-4 shadow-soft border-0 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4 items-center">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <label className="text-sm text-muted-foreground">Department</label>
+              <select className="border rounded-md px-2 py-1" value={filters.department} onChange={(e) => setFilters({ ...filters, department: e.target.value })}>
+                <option value="all">All</option>
+                <option value="cs">Computer Science</option>
+                <option value="me">Mechanical</option>
+                <option value="ee">Electrical</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <label className="text-sm text-muted-foreground">Date Range</label>
+              <select className="border rounded-md px-2 py-1" value={filters.dateRange} onChange={(e) => setFilters({ ...filters, dateRange: e.target.value })}>
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+                <option value="90d">Last 90 days</option>
+              </select>
+            </div>
+            <div className="text-xs text-muted-foreground">(Demo filters)</div>
+          </div>
+        </Card>
+
+        {/* High risk alert banner */}
+        {(() => {
+          const total = dashboardData.riskDistribution.reduce((s, r) => s + r.value, 0) || 1;
+          const high = dashboardData.riskDistribution.find(r => r.name.includes('High'))?.value || 0;
+          const percent = Math.round((high / total) * 100);
+          if (percent > 10) {
+            return (
+              <div className="mb-6 p-3 rounded-md bg-wellness-high/10 border border-wellness-high/30 text-wellness-high">
+                Alert: High-risk students exceed 10% ({percent}%). Immediate attention recommended.
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         {/* KPI Cards */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">

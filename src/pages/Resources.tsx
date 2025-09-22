@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Play, FileText, Volume2, Globe, Clock, Heart, Download, Eye } from "lucide-react";
+import { ArrowLeft, Play, FileText, Volume2, Globe, Clock, Heart, Download, Eye, Award } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -38,11 +38,54 @@ const Resources = () => {
   const [categories, setCategories] = useState<ResourceCategory[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
   const { toast } = useToast();
+  const [earnedBadges, setEarnedBadges] = useState<Record<string, boolean>>(() => {
+    try { return JSON.parse(localStorage.getItem('resourceBadges') || '{}'); } catch { return {}; }
+  });
+  const [topChallenges, setTopChallenges] = useState<Array<{ name: string; count: number }>>([]);
+  // Dance challenge state
+  const [danceRunning, setDanceRunning] = useState(false);
+  const [danceSeconds, setDanceSeconds] = useState(0);
+  const [danceTrack, setDanceTrack] = useState<string>('Lo-fi Beats');
+  const [danceAudioUrl, setDanceAudioUrl] = useState<string>('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3');
+  // Journal challenge state
+  const [journalRunning, setJournalRunning] = useState(false);
+  const [journalSeconds, setJournalSeconds] = useState(0);
+  const [journalText, setJournalText] = useState('');
 
   useEffect(() => {
     fetchCategories();
     fetchResources();
+    loadTopChallenges();
+    let danceTimer: number | undefined;
+    let journalTimer: number | undefined;
+    if (danceRunning) {
+      danceTimer = window.setInterval(() => setDanceSeconds((s) => s + 1), 1000);
+    }
+    if (journalRunning) {
+      journalTimer = window.setInterval(() => setJournalSeconds((s) => s + 1), 1000);
+    }
+    return () => {
+      if (danceTimer) window.clearInterval(danceTimer);
+      if (journalTimer) window.clearInterval(journalTimer);
+    };
   }, []);
+
+  useEffect(() => {
+    if (danceRunning && danceSeconds >= 60) {
+      // complete dance
+      setDanceRunning(false);
+      incrementChallenge('Dance It Out');
+      toast({ title: 'Nice moves! 💃🕺', description: 'Dance challenge completed. Badge progress updated.' });
+    }
+  }, [danceRunning, danceSeconds]);
+
+  useEffect(() => {
+    if (journalRunning && journalSeconds >= 60) {
+      setJournalRunning(false);
+      incrementChallenge('Journal Quest');
+      toast({ title: 'Well done! ✍️', description: '1-minute journaling done. You can save your note now.' });
+    }
+  }, [journalRunning, journalSeconds]);
 
   const fetchCategories = async () => {
     const { data, error } = await supabase
@@ -59,6 +102,61 @@ const Resources = () => {
     } else {
       setCategories(data || []);
     }
+  };
+
+  const loadTopChallenges = () => {
+    try {
+      const counts = JSON.parse(localStorage.getItem('challengeCounts') || '{}') as Record<string, number>;
+      const top = Object.entries(counts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 3);
+      setTopChallenges(top);
+    } catch {
+      setTopChallenges([]);
+    }
+  };
+
+  const incrementChallenge = (name: string) => {
+    const key = 'challengeCounts';
+    const counts = (() => { try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch { return {}; } })();
+    counts[name] = (counts[name] || 0) + 1;
+    localStorage.setItem(key, JSON.stringify(counts));
+    loadTopChallenges();
+  };
+
+  const selectDanceTrack = (label: string) => {
+    setDanceTrack(label);
+    // Map labels to demo audio URLs
+    const map: Record<string, string> = {
+      'Lo-fi Beats': 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+      'Bollywood Hits': 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+      'K-pop Energy': 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3'
+    };
+    setDanceAudioUrl(map[label] || map['Lo-fi Beats']);
+  };
+
+  const startDance = () => {
+    setDanceSeconds(0);
+    setDanceRunning(true);
+  };
+
+  const stopDance = () => {
+    setDanceRunning(false);
+  };
+
+  const startJournal = () => {
+    setJournalSeconds(0);
+    setJournalRunning(true);
+  };
+
+  const saveJournal = () => {
+    const entries = (() => { try { return JSON.parse(localStorage.getItem('journalEntries') || '[]'); } catch { return []; } })();
+    entries.push({ ts: new Date().toISOString(), text: journalText });
+    localStorage.setItem('journalEntries', JSON.stringify(entries));
+    awardBadge('journal-badge');
+    setJournalText('');
+    toast({ title: 'Saved', description: 'Your journal entry has been saved locally.' });
   };
 
   const fetchResources = async () => {
@@ -108,6 +206,16 @@ const Resources = () => {
     const categoryMatch = selectedCategory === 'all' || resource.category_id === selectedCategory;
     return categoryMatch;
   });
+
+  const awardBadge = (resourceId: string) => {
+    const updated = { ...earnedBadges, [resourceId]: true };
+    setEarnedBadges(updated);
+    localStorage.setItem('resourceBadges', JSON.stringify(updated));
+    // track gamification summary
+    const count = Object.values(updated).filter(Boolean).length;
+    localStorage.setItem('badgesCount', String(count));
+    toast({ title: 'Badge earned!', description: '📖 Knowledge Seeker +1 for completing a resource.' });
+  };
 
   const getTitle = (resource: Resource) => {
     return selectedLanguage === 'hi' ? resource.title_hi : resource.title_en;
@@ -190,7 +298,7 @@ const Resources = () => {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {filteredResources.map((resource) => (
             <Card key={resource.id} className="p-6 shadow-soft border-0 hover:shadow-card transition-all duration-300 group cursor-pointer"
-                  onClick={() => updateViewCount(resource.id)}>
+                  onClick={() => { updateViewCount(resource.id); }}>
               <div className="flex items-start justify-between mb-4">
                 <div className={`p-3 rounded-lg ${getCategoryColor(resource.type)}`}>
                   {getResourceIcon(resource.type)}
@@ -204,6 +312,11 @@ const Resources = () => {
                   <Badge variant="outline" className="text-xs">
                     {resource.type.toUpperCase()}
                   </Badge>
+                  {earnedBadges[resource.id] && (
+                    <Badge className="bg-wellness-safe/10 text-wellness-safe border-wellness-safe/20 flex items-center gap-1">
+                      <Award className="w-3 h-3" /> Badge
+                    </Badge>
+                  )}
                   {resource.duration_minutes && (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="w-3 h-3" />
@@ -231,16 +344,20 @@ const Resources = () => {
                     {resource.view_count}
                   </div>
                 </div>
-                <Button size="sm" variant="ghost" className="group-hover:text-primary">
-                  {resource.file_url ? (
-                    <div className="flex items-center gap-1">
-                      <Download className="w-3 h-3" />
-                      Access
-                    </div>
-                  ) : (
-                    'View Content'
-                  )}
-                </Button>
+                {resource.file_url ? (
+                  <a
+                    href={resource.file_url}
+                    download
+                    onClick={(e) => { e.stopPropagation(); awardBadge(resource.id); }}
+                    className="text-sm underline text-primary inline-flex items-center gap-1"
+                  >
+                    <Download className="w-3 h-3" /> Download
+                  </a>
+                ) : (
+                  <Button size="sm" variant="ghost" className="group-hover:text-primary" onClick={(e) => { e.stopPropagation(); awardBadge(resource.id); }}>
+                    View Content
+                  </Button>
+                )}
               </div>
             </Card>
           ))}
@@ -260,13 +377,19 @@ const Resources = () => {
                 Take a 3-5 minute dance break! Pick your favorite track and move your body to release stress and boost energy.
               </p>
               <div className="space-y-2 mb-4">
-                <Button variant="outline" size="sm" className="w-full">🎵 Lo-fi Beats</Button>
-                <Button variant="outline" size="sm" className="w-full">🎭 Bollywood Hits</Button>
-                <Button variant="outline" size="sm" className="w-full">🎤 K-pop Energy</Button>
+                <Button variant={danceTrack==='Lo-fi Beats'? 'wellness':'outline'} size="sm" className="w-full" onClick={() => selectDanceTrack('Lo-fi Beats')}>🎵 Lo-fi Beats</Button>
+                <Button variant={danceTrack==='Bollywood Hits'? 'wellness':'outline'} size="sm" className="w-full" onClick={() => selectDanceTrack('Bollywood Hits')}>🎭 Bollywood Hits</Button>
+                <Button variant={danceTrack==='K-pop Energy'? 'wellness':'outline'} size="sm" className="w-full" onClick={() => selectDanceTrack('K-pop Energy')}>🎤 K-pop Energy</Button>
               </div>
-              <Button variant="wellness" size="sm" className="w-full">
-                Start Dancing! 🎶
-              </Button>
+              <audio src={danceAudioUrl} controls className="w-full mb-3" onPlay={startDance} onPause={stopDance} />
+              <div className="text-xs text-muted-foreground text-center mb-3">Timer: {Math.min(danceSeconds,60)}s / 60s</div>
+              {!danceRunning ? (
+                <Button variant="wellness" size="sm" className="w-full" onClick={() => { startDance(); toast({ title: 'Challenge started!', description: 'Good vibes incoming 🎶' }); }}>
+                  Start Dancing! 🎶
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" className="w-full" onClick={stopDance}>Pause</Button>
+              )}
             </Card>
 
             <Card className="p-6 border-0 shadow-soft hover:shadow-card transition-all">
@@ -283,11 +406,42 @@ const Resources = () => {
                   "If stress was an animal today, which one would it be and why?"
                 </p>
               </div>
-              <Button variant="secondary" size="sm" className="w-full">
-                Start Writing 🌟
-              </Button>
+              {!journalRunning ? (
+                <Button variant="secondary" size="sm" className="w-full mb-3" onClick={startJournal}>
+                  Start 1-min Writing 🌟
+                </Button>
+              ) : (
+                <div className="text-xs text-muted-foreground text-center mb-3">Timer: {Math.min(journalSeconds,60)}s / 60s</div>
+              )}
+              <textarea
+                value={journalText}
+                onChange={(e) => setJournalText(e.target.value)}
+                placeholder="Write your thoughts here..."
+                className="w-full p-3 border rounded-md min-h-[100px]"
+              />
+              <div className="flex gap-2 mt-3">
+                <Button variant="wellness" size="sm" className="flex-1" onClick={saveJournal} disabled={!journalText.trim()}>
+                  Save Entry
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1" onClick={() => setJournalText('')}>
+                  Clear
+                </Button>
+              </div>
             </Card>
           </div>
+
+          {topChallenges.length > 0 && (
+            <div className="mt-8">
+              <h3 className="font-semibold text-center mb-3">Top 3 challenges completed this week</h3>
+              <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+                {topChallenges.map((c) => (
+                  <div key={c.name} className="px-3 py-1 bg-white/60 rounded-md shadow-soft">
+                    {c.name}: {c.count}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </Card>
       </div>
     </div>

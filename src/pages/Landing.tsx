@@ -2,11 +2,15 @@ import { useState } from "react";
 import { Globe, ArrowRight, Shield, Heart, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import heroImage from "@/assets/hero-wellness.jpg";
 
 const Landing = () => {
   const [language, setLanguage] = useState("en");
+  const [mood, setMood] = useState<string | null>(null);
+  const { toast } = useToast();
+  
 
   const translations = {
     en: {
@@ -41,16 +45,57 @@ const Landing = () => {
 
   const t = translations[language as keyof typeof translations];
 
+  const handleMoodSelect = (emoji: string) => {
+    setMood(emoji);
+    localStorage.setItem('moodToday', emoji);
+    // append to history
+    try {
+      const history = JSON.parse(localStorage.getItem('moodHistory') || '[]');
+      history.push({ ts: new Date().toISOString(), mood: emoji });
+      localStorage.setItem('moodHistory', JSON.stringify(history));
+    } catch {}
+    toast({ title: 'Mood saved', description: `Logged "${emoji}" for today.` });
+  };
+
+  const moodSuggestion = (() => {
+    if (mood === '😊') {
+      return {
+        title: 'Great to hear! Keep the momentum going',
+        desc: 'Try a quick challenge or explore a new resource.',
+        primary: { label: 'Explore Resources', href: '/resources' },
+        secondary: { label: 'Start a Challenge', href: '/resources' }
+      };
+    }
+    if (mood === '😐') {
+      return {
+        title: 'Feeling neutral? A short reset can help',
+        desc: 'Try a 2-min breathing exercise or browse calming tips.',
+        primary: { label: 'Open AI Chat (Breathing)', href: '/chat' },
+        secondary: { label: 'Browse Resources', href: '/resources' }
+      };
+    }
+    if (mood === '😔') {
+      return {
+        title: 'We’re here for you',
+        desc: 'Consider a quick assessment or connect with a counselor.',
+        primary: { label: 'Take Assessment', href: '/assessment' },
+        secondary: { label: 'Book Counselor', href: '/booking' }
+      };
+    }
+    return null;
+  })();
+
   return (
     <div className="min-h-screen bg-gradient-background">
       {/* Header */}
       <header className="px-6 py-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <Heart className="w-6 h-6 text-primary" />
-          <span className="font-semibold text-lg">MindWell</span>
+          <span className="font-semibold text-lg">MindBridge</span>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <div className="text-xs text-muted-foreground hidden sm:block">Anonymous Mode – no personal data stored</div>
           <Globe className="w-4 h-4 text-muted-foreground" />
           <select 
             value={language}
@@ -95,6 +140,33 @@ const Landing = () => {
                   Join Community
                 </Link>
               </Button>
+            </div>
+
+            {/* Mood nudge */}
+            <div className="mt-6">
+              <p className="text-sm mb-2">How are you feeling today?</p>
+              <div className="flex gap-2">
+                {['😊','😐','😔'].map((emoji) => (
+                  <button key={emoji} className={`text-2xl rounded-md px-3 py-1 border ${mood===emoji? 'border-primary' : 'border-transparent'} hover:border-primary`}
+                    onClick={() => handleMoodSelect(emoji)}>
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+              {moodSuggestion && (
+                <Card className="mt-4 p-4 border-0 shadow-soft">
+                  <h4 className="font-semibold mb-1">{moodSuggestion.title}</h4>
+                  <p className="text-sm text-muted-foreground mb-3">{moodSuggestion.desc}</p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button asChild variant="wellness">
+                      <Link to={moodSuggestion.primary.href}>{moodSuggestion.primary.label}</Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                      <Link to={moodSuggestion.secondary.href}>{moodSuggestion.secondary.label}</Link>
+                    </Button>
+                  </div>
+                </Card>
+              )}
             </div>
           </div>
 

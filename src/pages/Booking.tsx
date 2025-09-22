@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Calendar, Clock, User, CheckCircle, Phone, Video } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, User, CheckCircle, Phone, Video, MapPin, Laptop } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -18,6 +18,7 @@ interface BookingData {
   time: string;
   counselor: string;
   type: 'video' | 'phone';
+  mode: 'online' | 'in_person';
 }
 
 const timeSlots: TimeSlot[] = [
@@ -35,6 +36,7 @@ const Booking = () => {
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [bookingConfirmed, setBookingConfirmed] = useState(false);
   const [bookingData, setBookingData] = useState<BookingData | null>(null);
+  const [sessionMode, setSessionMode] = useState<'online' | 'in_person'>('online');
 
   const handleBookSlot = () => {
     if (selectedSlot) {
@@ -42,7 +44,8 @@ const Booking = () => {
         date: selectedDate,
         time: selectedSlot.time,
         counselor: selectedSlot.counselor,
-        type: selectedSlot.type
+        type: selectedSlot.type,
+        mode: sessionMode
       };
       
       setBookingData(booking);
@@ -153,6 +156,30 @@ const Booking = () => {
               min={new Date().toISOString().split('T')[0]}
               className="w-full p-3 border-2 border-border rounded-xl focus:border-primary focus:outline-none"
             />
+            <div className="mt-6">
+              <h4 className="font-semibold mb-2 flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-muted-foreground" />
+                Session Mode
+              </h4>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  className={`p-3 rounded-lg border-2 text-sm ${sessionMode === 'online' ? 'border-primary bg-primary-light' : 'border-border hover:border-primary'}`}
+                  onClick={() => setSessionMode('online')}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Laptop className="w-4 h-4" /> Online
+                  </div>
+                </button>
+                <button
+                  className={`p-3 rounded-lg border-2 text-sm ${sessionMode === 'in_person' ? 'border-primary bg-primary-light' : 'border-border hover:border-primary'}`}
+                  onClick={() => setSessionMode('in_person')}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <MapPin className="w-4 h-4" /> In-person
+                  </div>
+                </button>
+              </div>
+            </div>
           </Card>
 
           {/* Time Slots */}
@@ -168,10 +195,10 @@ const Booking = () => {
                   key={slot.id}
                   className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                     !slot.available
-                      ? 'border-muted bg-muted/30 cursor-not-allowed opacity-50'
+                      ? 'border-red-200 bg-red-50 cursor-not-allowed opacity-70'
                       : selectedSlot?.id === slot.id
                       ? 'border-primary bg-primary-light'
-                      : 'border-border hover:border-primary hover:bg-muted/50'
+                      : 'border-green-200 bg-green-50 hover:border-primary'
                   }`}
                   onClick={() => slot.available && setSelectedSlot(slot)}
                 >
@@ -192,7 +219,7 @@ const Booking = () => {
                   </div>
                   
                   <div className="flex items-center justify-between">
-                    <Badge variant={slot.available ? "secondary" : "outline"} className="text-xs">
+                    <Badge variant={slot.available ? "secondary" : "outline"} className={`text-xs ${slot.available ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                       {slot.available ? 'Available' : 'Booked'}
                     </Badge>
                     <span className="text-xs text-muted-foreground capitalize">
@@ -201,6 +228,10 @@ const Booking = () => {
                   </div>
                 </div>
               ))}
+            </div>
+            <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full bg-green-400"></span> Open</div>
+              <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full bg-red-400"></span> Booked</div>
             </div>
 
             {selectedSlot && (
@@ -211,6 +242,7 @@ const Booking = () => {
                   <p><strong>Time:</strong> {selectedSlot.time}</p>
                   <p><strong>Counselor:</strong> {selectedSlot.counselor}</p>
                   <p><strong>Type:</strong> {selectedSlot.type === 'video' ? 'Video' : 'Phone'} Session</p>
+                  <p><strong>Mode:</strong> {sessionMode === 'online' ? 'Online' : 'In-person'}</p>
                 </div>
                 
                 <Button 

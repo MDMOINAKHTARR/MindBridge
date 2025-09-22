@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Plus, MessageCircle, Users, Pin, Lock, ThumbsUp, Globe, Search, Filter } from "lucide-react";
+import { ArrowLeft, Plus, MessageCircle, Users, Pin, Lock, ThumbsUp, Globe, Search, Filter, Trash2, Edit } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -49,6 +50,7 @@ const Forums = () => {
     is_anonymous: false,
     category_id: ''
   });
+  const [isCreatingPost, setIsCreatingPost] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -56,46 +58,73 @@ const Forums = () => {
     fetchPosts();
   }, []);
 
-  const fetchCategories = async () => {
-    const { data, error } = await supabase
-      .from('forum_categories')
-      .select('*')
-      .eq('is_active', true)
-      .order('name_en');
+  // Refetch posts when category changes
+  useEffect(() => {
+    fetchPosts();
+  }, [selectedCategory]);
 
-    if (error) {
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('forum_categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('name_en');
+
+      if (error) {
+        console.error('Error fetching categories:', error);
+        toast({
+          title: "Error loading categories",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        console.log('Categories loaded:', data);
+        setCategories(data || []);
+      }
+    } catch (err) {
+      console.error('Unexpected error fetching categories:', err);
       toast({
-        title: "Error loading categories",
-        description: error.message,
+        title: "Connection error",
+        description: "Unable to connect to the database. Please check your connection.",
         variant: "destructive",
       });
-    } else {
-      setCategories(data || []);
     }
   };
 
   const fetchPosts = async () => {
-    let query = supabase
-      .from('forum_posts')
-      .select('*')
-      .eq('is_moderated', false)
-      .order('is_pinned', { ascending: false })
-      .order('created_at', { ascending: false });
+    try {
+      let query = supabase
+        .from('forum_posts')
+        .select('*')
+        .eq('is_moderated', false)
+        .order('is_pinned', { ascending: false })
+        .order('created_at', { ascending: false });
 
-    if (selectedCategory !== 'all') {
-      query = query.eq('category_id', selectedCategory);
-    }
+      if (selectedCategory !== 'all') {
+        query = query.eq('category_id', selectedCategory);
+      }
 
-    const { data, error } = await query;
+      const { data, error } = await query;
 
-    if (error) {
+      if (error) {
+        console.error('Error fetching posts:', error);
+        toast({
+          title: "Error loading posts",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        console.log('Posts loaded:', data);
+        setPosts(data || []);
+      }
+    } catch (err) {
+      console.error('Unexpected error fetching posts:', err);
       toast({
-        title: "Error loading posts",
-        description: error.message,
+        title: "Connection error",
+        description: "Unable to connect to the database. Please check your connection.",
         variant: "destructive",
       });
-    } else {
-      setPosts(data || []);
     }
   };
 
@@ -103,31 +132,114 @@ const Forums = () => {
     if (!newPost.title || !newPost.content) {
       toast({
         title: "Please fill in all fields",
+        description: "Title and content are required to create a post.",
         variant: "destructive",
       });
       return;
     }
 
-    const { error } = await supabase
-      .from('forum_posts')
-      .insert([{
-        ...newPost,
-        user_id: 'anonymous-user' // For demo purposes
-      }]);
-
-    if (error) {
+    if (!newPost.category_id) {
       toast({
-        title: "Error creating post",
-        description: error.message,
+        title: "Please select a category",
+        description: "Choose a category for your post.",
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Post created successfully!",
+      return;
+    }
+
+    setIsCreatingPost(true);
+
+    try {
+      // Generate a temporary user ID for anonymous posts
+      const tempUserId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      console.log('Creating post with data:', {
+        ...newPost,
+        user_id: tempUserId,
+        upvotes: 0,
+        view_count: 0,
+        is_pinned: false,
+        is_locked: false,
+        is_moderated: false
       });
-      setShowNewPostDialog(false);
-      setNewPost({ title: '', content: '', is_anonymous: false, category_id: '' });
-      fetchPosts();
+
+      const { data, error } = await supabase
+        .from('forum_posts')
+        .insert([{
+          ...newPost,
+          user_id: tempUserId,
+          upvotes: 0,
+          view_count: 0,
+          is_pinned: false,
+          is_locked: false,
+          is_moderated: false
+        }])
+        .select();
+
+      console.log('Post creation result:', { data, error });
+
+      if (error) {
+        console.error('Post creation error:', error);
+        toast({
+          title: "Error creating post",
+          description: `Failed to create post: ${error.message}`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Post created successfully!",
+          description: "Your post has been submitted and will appear after moderation.",
+        });
+        setShowNewPostDialog(false);
+        setNewPost({ title: '', content: '', is_anonymous: false, category_id: '' });
+        fetchPosts();
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      toast({
+        title: "Unexpected error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingPost(false);
+    }
+  };
+
+  const deletePost = async (postId: string) => {
+    try {
+      console.log('Attempting to delete post with ID:', postId);
+      
+      const { data, error } = await supabase
+        .from('forum_posts')
+        .delete()
+        .eq('id', postId)
+        .select();
+
+      console.log('Delete result:', { data, error });
+
+      if (error) {
+        console.error('Error deleting post:', error);
+        toast({
+          title: "Error deleting post",
+          description: `Failed to delete post: ${error.message}`,
+          variant: "destructive",
+        });
+      } else {
+        console.log('Post deleted successfully:', data);
+        toast({
+          title: "Post deleted successfully",
+          description: "The post has been permanently removed.",
+        });
+        fetchPosts(); // Refresh the posts list
+      }
+    } catch (err) {
+      console.error('Unexpected error deleting post:', err);
+      toast({
+        title: "Unexpected error",
+        description: "An unexpected error occurred while deleting the post.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -176,14 +288,18 @@ const Forums = () => {
             <DialogContent className="sm:max-w-[600px]">
               <DialogHeader>
                 <DialogTitle>Create New Post</DialogTitle>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Share your thoughts, ask for support, or start a discussion with fellow students.
+                </p>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="category">Category</Label>
+                  <Label htmlFor="category">Category *</Label>
                   <select
                     value={newPost.category_id}
                     onChange={(e) => setNewPost({ ...newPost, category_id: e.target.value })}
                     className="w-full mt-1 bg-white border-2 border-border rounded-lg px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    required
                   >
                     <option value="">Select a category</option>
                     {categories.map((category) => (
@@ -194,17 +310,18 @@ const Forums = () => {
                   </select>
                 </div>
                 <div>
-                  <Label htmlFor="title">Title</Label>
+                  <Label htmlFor="title">Title *</Label>
                   <Input
                     id="title"
                     value={newPost.title}
                     onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
                     placeholder="What's on your mind?"
                     className="mt-1"
+                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="content">Content</Label>
+                  <Label htmlFor="content">Content *</Label>
                   <Textarea
                     id="content"
                     value={newPost.content}
@@ -212,6 +329,7 @@ const Forums = () => {
                     placeholder="Share your thoughts, experiences, or ask for support..."
                     rows={6}
                     className="mt-1"
+                    required
                   />
                 </div>
                 <div className="flex items-center space-x-2">
@@ -223,10 +341,18 @@ const Forums = () => {
                   <Label htmlFor="anonymous">Post anonymously</Label>
                 </div>
                 <div className="flex gap-2 pt-4">
-                  <Button onClick={createPost} className="flex-1">
-                    Create Post
+                  <Button 
+                    onClick={createPost} 
+                    className="flex-1" 
+                    disabled={isCreatingPost}
+                  >
+                    {isCreatingPost ? "Creating..." : "Create Post"}
                   </Button>
-                  <Button variant="outline" onClick={() => setShowNewPostDialog(false)}>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowNewPostDialog(false)}
+                    disabled={isCreatingPost}
+                  >
                     Cancel
                   </Button>
                 </div>
@@ -252,11 +378,21 @@ const Forums = () => {
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search posts..."
+              placeholder="Search posts by title or content..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 pr-10"
             />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                onClick={() => setSearchQuery('')}
+              >
+                ×
+              </Button>
+            )}
           </div>
 
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
@@ -289,6 +425,18 @@ const Forums = () => {
             </Card>
           ))}
         </div>
+
+        {/* Search Results Info */}
+        {searchQuery && (
+          <div className="mb-4 p-3 bg-muted/30 rounded-lg">
+            <p className="text-sm text-muted-foreground">
+              {filteredPosts.length === 0 
+                ? `No posts found for "${searchQuery}"`
+                : `Found ${filteredPosts.length} post${filteredPosts.length === 1 ? '' : 's'} for "${searchQuery}"`
+              }
+            </p>
+          </div>
+        )}
 
         {/* Posts List */}
         <div className="space-y-4">
@@ -330,9 +478,35 @@ const Forums = () => {
                     {post.view_count} views
                   </div>
                 </div>
-                <Button variant="ghost" size="sm">
-                  View Discussion
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm">
+                    View Discussion
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Post</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete this post? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deletePost(post.id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             </Card>
           ))}
@@ -340,14 +514,33 @@ const Forums = () => {
           {filteredPosts.length === 0 && (
             <Card className="p-8 text-center">
               <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No posts found</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                {searchQuery ? 'No posts found' : 'No posts yet'}
+              </h3>
               <p className="text-muted-foreground mb-4">
-                Be the first to start a conversation in this category!
+                {searchQuery 
+                  ? `No posts match your search "${searchQuery}". Try a different search term or browse all posts.`
+                  : selectedCategory === 'all' 
+                    ? 'Be the first to start a conversation!'
+                    : `No posts in this category yet. Be the first to start a conversation!`
+                }
               </p>
-              <Button onClick={() => setShowNewPostDialog(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create First Post
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <Button onClick={() => setShowNewPostDialog(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create First Post
+                </Button>
+                {searchQuery && (
+                  <Button variant="outline" onClick={() => setSearchQuery('')}>
+                    Clear Search
+                  </Button>
+                )}
+                {selectedCategory !== 'all' && (
+                  <Button variant="outline" onClick={() => setSelectedCategory('all')}>
+                    View All Posts
+                  </Button>
+                )}
+              </div>
             </Card>
           )}
         </div>
