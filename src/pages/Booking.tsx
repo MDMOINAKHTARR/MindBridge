@@ -189,71 +189,95 @@ const Booking = () => {
               Available Time Slots
             </h3>
             
-            <div className="grid sm:grid-cols-2 gap-4">
-              {timeSlots.map((slot) => (
-                <div
-                  key={slot.id}
-                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    !slot.available
-                      ? 'border-red-200 bg-red-50 cursor-not-allowed opacity-70'
-                      : selectedSlot?.id === slot.id
-                      ? 'border-primary bg-primary-light'
-                      : 'border-green-200 bg-green-50 hover:border-primary'
-                  }`}
-                  onClick={() => slot.available && setSelectedSlot(slot)}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">{slot.time}</span>
-                    <div className="flex items-center gap-1">
-                      {slot.type === 'video' ? (
-                        <Video className="w-4 h-4 text-muted-foreground" />
-                      ) : (
-                        <Phone className="w-4 h-4 text-muted-foreground" />
-                      )}
+              <div className="grid sm:grid-cols-2 gap-4">
+                {timeSlots.map((slot) => (
+                  <div
+                    key={slot.id}
+                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                      !slot.available
+                        ? 'border-red-200 bg-red-50 cursor-not-allowed opacity-70'
+                        : selectedSlot?.id === slot.id
+                        ? 'border-primary bg-primary-light'
+                        : 'border-green-200 bg-green-50 hover:border-primary'
+                    }`}
+                    onClick={() => slot.available && setSelectedSlot(slot)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium">{slot.time}</span>
+                      <div className="flex items-center gap-1">
+                        {slot.type === 'video' ? (
+                          <Video className="w-4 h-4 text-muted-foreground" />
+                        ) : (
+                          <Phone className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 mb-2">
+                      <User className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">{slot.counselor}</span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <Badge variant={slot.available ? "secondary" : "outline"} className={`text-xs ${slot.available ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        {slot.available ? 'Available' : 'Booked'}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground capitalize">
+                        {slot.type} session
+                      </span>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-2 mb-2">
-                    <User className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">{slot.counselor}</span>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <Badge variant={slot.available ? "secondary" : "outline"} className={`text-xs ${slot.available ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {slot.available ? 'Available' : 'Booked'}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground capitalize">
-                      {slot.type} session
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
-              <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full bg-green-400"></span> Open</div>
-              <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full bg-red-400"></span> Booked</div>
-            </div>
-
-            {selectedSlot && (
-              <div className="mt-6 p-4 bg-primary-light rounded-lg">
-                <h4 className="font-semibold text-primary mb-2">Session Details:</h4>
-                <div className="space-y-1 text-sm text-primary">
-                  <p><strong>Date:</strong> {new Date(selectedDate).toLocaleDateString()}</p>
-                  <p><strong>Time:</strong> {selectedSlot.time}</p>
-                  <p><strong>Counselor:</strong> {selectedSlot.counselor}</p>
-                  <p><strong>Type:</strong> {selectedSlot.type === 'video' ? 'Video' : 'Phone'} Session</p>
-                  <p><strong>Mode:</strong> {sessionMode === 'online' ? 'Online' : 'In-person'}</p>
-                </div>
-                
-                <Button 
-                  onClick={handleBookSlot}
-                  className="w-full mt-4"
-                  variant="wellness"
-                >
-                  Confirm Booking
-                </Button>
+                ))}
               </div>
-            )}
+              <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full bg-green-400"></span> Open</div>
+                <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full bg-red-400"></span> Booked</div>
+              </div>
+
+              {selectedSlot && (
+                <div className="mt-6 p-4 bg-primary-light rounded-lg">
+                  <h4 className="font-semibold text-primary mb-2">Session Details:</h4>
+                  <div className="space-y-1 text-sm text-primary">
+                    <p><strong>Date:</strong> {new Date(selectedDate).toLocaleDateString()}</p>
+                    <p><strong>Time:</strong> {selectedSlot.time}</p>
+                    <p><strong>Counselor:</strong> {selectedSlot.counselor}</p>
+                    <p><strong>Type:</strong> {selectedSlot.type === 'video' ? 'Video' : 'Phone'} Session</p>
+                    <p><strong>Mode:</strong> {sessionMode === 'online' ? 'Online' : 'In-person'}</p>
+                  </div>
+                  
+                  <Button 
+                    onClick={handleBookSlot}
+                    className="w-full mt-4"
+                    variant="wellness"
+                  >
+                    Confirm Booking
+                  </Button>
+                </div>
+              )}
+            </Card>
+          </div>
+
+          {/* Info Section */}
+          <Card className="mt-8 p-6 shadow-soft border-0 bg-secondary-light">
+            <h3 className="font-semibold mb-4 text-secondary">What to Expect</h3>
+            <div className="grid md:grid-cols-2 gap-6 text-sm text-secondary">
+              <div>
+                <h4 className="font-medium mb-2">Session Length</h4>
+                <p>Each session is 50 minutes long with a professional licensed counselor.</p>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2">Confidentiality</h4>
+                <p>All sessions are completely confidential and follow strict privacy guidelines.</p>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2">Preparation</h4>
+                <p>No special preparation needed. Come as you are and share what feels comfortable.</p>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2">Follow-up</h4>
+                <p>You can book follow-up sessions and access additional resources as needed.</p>
+              </div>
+            </div>
           </Card>
         </div>
 
