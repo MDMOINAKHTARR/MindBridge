@@ -234,6 +234,30 @@ export type Database = {
         }
         Relationships: []
       }
+      resource_feedback: {
+        Row: {
+          created_at: string
+          id: string
+          rating: number
+          resource_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          rating: number
+          resource_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          rating?: number
+          resource_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       resources: {
         Row: {
           category_id: string | null
@@ -244,8 +268,10 @@ export type Database = {
           description_hi: string | null
           duration_minutes: number | null
           file_url: string | null
+          helpful_count: number | null
           id: string
           is_featured: boolean | null
+          not_helpful_count: number | null
           thumbnail_url: string | null
           title_en: string
           title_hi: string
@@ -262,8 +288,10 @@ export type Database = {
           description_hi?: string | null
           duration_minutes?: number | null
           file_url?: string | null
+          helpful_count?: number | null
           id?: string
           is_featured?: boolean | null
+          not_helpful_count?: number | null
           thumbnail_url?: string | null
           title_en: string
           title_hi: string
@@ -280,8 +308,10 @@ export type Database = {
           description_hi?: string | null
           duration_minutes?: number | null
           file_url?: string | null
+          helpful_count?: number | null
           id?: string
           is_featured?: boolean | null
+          not_helpful_count?: number | null
           thumbnail_url?: string | null
           title_en?: string
           title_hi?: string
